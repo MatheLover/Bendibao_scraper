@@ -3,6 +3,9 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 from time import sleep
+import logging
+logging.basicConfig(level="INFO")
+
 
 def article_parsing(url):
     # result parsing
@@ -15,7 +18,7 @@ def article_parsing(url):
     title = result.find("h1").get_text()
 
     # article time
-    article_time = result.find("span", class_ = "public_time").get_text()
+    article_time = result.find("span", class_="public_time").get_text()
 
     # article texts
     article_content = result.find_all("div", class_="content-box")
@@ -23,30 +26,33 @@ def article_parsing(url):
     for d in article_content[0].find_all("p"):
         article_text += (d.text.strip())
 
-
     return article_time, title, article_text
-
-
 
 
 def article_url(div_tag_list):
     url_list = []
     # list of items within a page
     for div in div_tag_list:
-        a = div.find_all("a",{"target": "_blank"})
+        a = div.find_all("a", {"target": "_blank"})
         url_list.append('http://m.xa.bendibao.com' + a[0]['href'])
     return url_list
+
 
 if __name__ == "__main__":
     # create empty dataframe
     df = pd.DataFrame(columns=['Time', 'Title', 'Content'])
 
     # start with initial page
-    headers = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36'}
-    URL = "http://m.xa.bendibao.com/news/xiandongtai/"
+    headers = {
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.142 Safari/537.36'}
+    URL = "http://m.xa.bendibao.com/news/xiandongtai/list2.htm"
     r = requests.get(URL)
     soup = BeautifulSoup(r.text, "html.parser")
-    div_tag_list = soup.find_all("div",class_="list-item2016")
+
+    # logging page url
+    logging.info("Processing page: %s", URL)
+
+    div_tag_list = soup.find_all("div", class_="list-item2016")
 
     # get url of each result within the page
     url_list = article_url(div_tag_list)
@@ -59,15 +65,16 @@ if __name__ == "__main__":
         df = pd.concat([df, new_row])
         df.to_csv('test.csv', mode='a', index=False, header=False)
 
-        # write to
-        print("----------------------------------------------------------------")
-
     # try to call next page
     page_turner = soup.find_all("a", string=">")
     while len(page_turner[0]['href']) != 0:
         URL = "http://m.xa.bendibao.com/news/xiandongtai/" + page_turner[0]['href']
-        sleep(randint(8,15))
-        r = requests.get(URL,headers=headers)
+
+        # logging page number
+        logging.info("Processing page: %s",URL)
+
+        sleep(randint(180,200))
+        r = requests.get(URL, headers=headers)
         soup = BeautifulSoup(r.text, "html.parser")
         div_tag_list = soup.find_all("div", class_="list-item2016")
         url_list = article_url(div_tag_list)
@@ -81,8 +88,3 @@ if __name__ == "__main__":
             df = pd.concat([df, new_row])
             df.to_csv('test.csv', mode='a', index=False, header=False)
         page_turner = soup.find_all("a", string=">")
-
-
-
-
-
