@@ -6,7 +6,10 @@ import requests
 from bs4 import BeautifulSoup
 from time import sleep
 import logging
-logging.basicConfig(level="INFO")
+
+logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
+                    level=logging.INFO,
+                    datefmt='%Y-%m-%d %H:%M:%S')
 
 # base url for each article given each city
 url_1 = 'http://m.tj.bendibao.com/'
@@ -38,49 +41,45 @@ def article_parsing(url):
         sys.exit()
 
     # article texts
-    # eliminate table tag
     article_content = result.find_all("div", class_="content-box")
     article_text = ""
     # find all p tags
-    p_tag_list = [p for p in article_content[0].find_all("p") if p.parent.name == 'table']
+    p_tag_list = article_content[0].find_all("p")
     for d in p_tag_list:
-        # print(d.parents)
-        # if d.parent.name != 'td':
+        if d.find('table') is None:
             article_text += (d.text.strip())
-
-
-
 
     # article table
     table = result.find('table')
-    rows = None
     if table is not None:
-        rows = table.find_all('tr')
-    if rows is not None:
-        first = rows[0]
-        allRows = rows[1:-1]
-        escapes = ''.join([chr(char) for char in range(1, 32)])
-        translator = str.maketrans('', '', escapes)
-        headers = [header.get_text().strip() for header in first.find_all('td')]
-        test = [[data.get_text().translate(translator) for data in row.find_all('td')] for row in allRows]
+        rows = None
+        if table is not None:
+            rows = table.find_all('tr')
+        if rows is not None:
+            first = rows[0]
+            allRows = rows[1:-1]
+            escapes = ''.join([chr(char) for char in range(1, 32)])
+            translator = str.maketrans('', '', escapes)
+            headers = [header.get_text().strip() for header in first.find_all('td')]
+            test = [[data.get_text().translate(translator) for data in row.find_all('td')] for row in allRows]
 
-        rowspan = []
+            rowspan = []
 
-        for no, tr in enumerate(allRows):
-            for td_no, data in enumerate(tr.find_all('td')):
-                if data.get("rowspan") is not None:
-                    t = data.get_text()
-                    escapes = ''.join([chr(char) for char in range(1, 32)])
-                    translator = str.maketrans('', '', escapes)
-                    t = t.translate(translator)
-                    rowspan.append((no, td_no, int(data["rowspan"]),t))
-        if rowspan:
-            for i in rowspan:
-                # i[0], i[1], i[2], i[3] -- row index involving repetitive data (non-header rows), row index td with row span,number of repetitions  ,repetitive data
-                # tr value of rowspan in present in 1th place in results
-                for j in range(1, i[2]):
-                    # - Add value in next tr.
-                    test[i[0] + j].insert(i[1], i[3])
+            for no, tr in enumerate(allRows):
+                for td_no, data in enumerate(tr.find_all('td')):
+                    if data.get("rowspan") is not None:
+                        t = data.get_text()
+                        escapes = ''.join([chr(char) for char in range(1, 32)])
+                        translator = str.maketrans('', '', escapes)
+                        t = t.translate(translator)
+                        rowspan.append((no, td_no, int(data["rowspan"]), t))
+            if rowspan:
+                for i in rowspan:
+                    # i[0], i[1], i[2], i[3] -- row index involving repetitive data (non-header rows), row index td with row span,number of repetitions  ,repetitive data
+                    # tr value of rowspan in present in 1th place in results
+                    for j in range(1, i[2]):
+                        # - Add value in next tr.
+                        test[i[0] + j].insert(i[1], i[3])
 
         # create df for tables
         df = pd.DataFrame(data=test, columns=headers)
@@ -88,18 +87,7 @@ def article_parsing(url):
 
     # concatenate articles and tables
     if 'df' in locals():
-        article_text = article_text + '\n' + df
-        print(article_text)
-
-
-
-    # if rows is not None:
-    #     for row in rows:
-    #         cells = row.find_all(['td'])
-    #         cells_text = [cell.get_text(strip=True) for cell in cells]
-    #         table_elem_list.append(cells_text)
-    #
-    # print(table_elem_list)
+        article_text = article_text + '\n\n' + df
 
     return article_time, title, article_text
 
@@ -137,29 +125,29 @@ if __name__ == "__main__":
         new_row = {'Time': article_time, 'Title': title, 'Content': article_text}
         new_row = pd.DataFrame.from_records([new_row])
         df = pd.concat([df, new_row])
-        df.to_csv('test.csv', mode='a', index=False, header=False)
 
+    df.to_csv('test.csv', mode='a', index=False, header=False)
 
     # try to call next page
-    # page_turner = soup.find_all("a", string=">")
-    # while len(page_turner[0]['href']) != 0:
-    #     URL = url_3 + page_turner[0]['href']
-    #
-    #     # logging page number
-    #     logging.info("Processing page: %s",URL)
-    #
-    #     sleep(randint(180,200))
-    #     r = requests.get(URL, headers=headers)
-    #     soup = BeautifulSoup(r.text, "html.parser")
-    #     div_tag_list = soup.find_all("div", class_="list-item2016")
-    #     url_list = article_url(div_tag_list)
-    #     for url in url_list:
-    #         article_parsing(url)
-    #         article_time, title, article_text = article_parsing(url)
-    #
-    #         # append new row to the dataframe
-    #         new_row = {'Time': article_time, 'Title': title, 'Content': article_text}
-    #         new_row = pd.DataFrame.from_records([new_row])
-    #         df = pd.concat([df, new_row])
-    #         df.to_csv('test.csv', mode='a', index=False, header=False)
-    #     page_turner = soup.find_all("a", string=">")
+    page_turner = soup.find_all("a", string=">")
+    while len(page_turner[0]['href']) != 0:
+        URL = url_3 + page_turner[0]['href']
+
+        # logging page number
+        logging.info("Processing page: %s", URL)
+
+        sleep(randint(10, 15))
+        r = requests.get(URL, headers=headers)
+        soup = BeautifulSoup(r.text, "html.parser")
+        div_tag_list = soup.find_all("div", class_="list-item2016")
+        url_list = article_url(div_tag_list)
+        for url in url_list:
+            article_parsing(url)
+            article_time, title, article_text = article_parsing(url)
+
+            # append new row to the dataframe
+            new_row = {'Time': article_time, 'Title': title, 'Content': article_text}
+            new_row = pd.DataFrame.from_records([new_row])
+            df = pd.concat([df, new_row])
+        df.to_csv('test.csv', mode='a', index=False, header=False)
+        page_turner = soup.find_all("a", string=">")
