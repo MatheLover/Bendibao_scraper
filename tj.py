@@ -126,7 +126,7 @@ if __name__ == "__main__":
         new_row = pd.DataFrame.from_records([new_row])
         df = pd.concat([df, new_row])
 
-    df.to_csv('test.csv', mode='a', index=False, header=False)
+    df.to_csv('test.csv', index=False, header=False)
 
     # try to call next page
     page_turner = soup.find_all("a", string=">")
@@ -148,6 +148,5 @@ if __name__ == "__main__":
             # append new row to the dataframe
             new_row = {'Time': article_time, 'Title': title, 'Content': article_text}
             new_row = pd.DataFrame.from_records([new_row])
-            df = pd.concat([df, new_row])
-        df.to_csv('test.csv', mode='a', index=False, header=False)
+            new_row.to_csv('test.csv', mode='a', index=False, header=False)
         page_turner = soup.find_all("a", string=">")
