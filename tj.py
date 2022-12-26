@@ -15,9 +15,9 @@ logging.basicConfig(format='%(asctime)s %(levelname)-8s %(message)s',
 url_1 = 'http://m.tj.bendibao.com/'
 
 # url of first page on covid-19 policy given the city
-url_2 = 'http://m.tj.bendibao.com/news/tianjindongtai/'
+url_2 = 'http://m.tj.bendibao.com/news/tianjindongtai/list3.htm'
 
-# base url given the city for turning pages
+# base url given the city for turning pagises
 url_3 = 'http://m.tj.bendibao.com/news/tianjindongtai/'
 table_elem_list = []
 
@@ -126,7 +126,7 @@ if __name__ == "__main__":
         new_row = pd.DataFrame.from_records([new_row])
         df = pd.concat([df, new_row])
 
-    df.to_csv('test.csv', index=False, header=False)
+    df.to_csv('test.csv', mode='a',index=False, header=False)
 
     # try to call next page
     page_turner = soup.find_all("a", string=">")
@@ -137,7 +137,7 @@ if __name__ == "__main__":
         logging.info("Processing page: %s", URL)
 
         sleep(randint(10, 15))
-        r = requests.get(URL, headers=headers)
+        r = requests.get(URL)
         soup = BeautifulSoup(r.text, "html.parser")
         div_tag_list = soup.find_all("div", class_="list-item2016")
         url_list = article_url(div_tag_list)
